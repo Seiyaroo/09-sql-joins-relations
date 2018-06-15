@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 
 // TODO DONE: Don't forget to set your own conString
-const conString = 'postgres://localhost:5432/kilovolt';
+const conString = 'postgres://localhost:5432';
 
 const client = new pg.Client(conString);
 client.connect();
@@ -29,7 +29,10 @@ app.get('/new-article', (request, response) => {
 app.get('/articles', (request, response) => {
   // REVIEW: This query will join the data together from our tables and send it back to the client.
   // TODO DONE: Write a SQL query which joins all data from articles and authors tables on the author_id value of each.
-  client.query(`SELECT * FROM articles FULL OUTER JOIN authors ON article_id = author_id;`)
+  client.query(`
+    SELECT * FROM articles
+    INNER JOIN authors 
+    ON articles.author_id=authors.author_id;`)
     .then(result => {
       response.send(result.rows);
     })
@@ -43,7 +46,7 @@ app.post('/articles', (request, response) => {
   // TODO DONE: In the provided array, add the author and author_url as data for the SQL query.
   let SQL = `
   INSERT INTO authors(author, author_url) 
-  VALUES ('$1, $2') ON CONFLICT DO NOTHING;
+  VALUES ($1, $2) ON CONFLICT DO NOTHING;
   `;
   let values = [
     request.body.author,
@@ -60,10 +63,9 @@ app.post('/articles', (request, response) => {
   function queryTwo() {
     // TODO DONE: Write a SQL query to retrieve the author_id from the authors table for the new article.
     // TODO DONE (maybe): In the provided array, add the author name as data for the SQL query.
-    let SQL = 'SELECT author_id FROM authors';
+    let SQL = 'SELECT author_id FROM authors WHERE author=$1';
     let values = [
-      request.params.id,
-      request.body.name
+      request.body.author
     ];
     client.query(SQL, values,
       function(err, result) {
@@ -77,15 +79,17 @@ app.post('/articles', (request, response) => {
 
   function queryThree(author_id) {
     // TODO DONE: Write a SQL query to insert the new article using the author_id from our previous query.
-    // TODO: In the provided array, add the data from our new article, including the author_id, as data for the SQL query.
+    // TODO DONE: In the provided array, add the data from our new article, including the author_id, as data for the SQL query.
     let SQL = `
-      INSERT INTO articles(author_id, author, author_url)
-      VALUES ($1, $2, $3);
+      INSERT INTO articles(author_id, title, category, body, published_on)
+      VALUES ($1, $2, $3, $4, $5);
     `;
     let values = [
-      request.params.id,
-      request.body.author,
-      request.body.author_url
+      author_id,
+      request.body.title,
+      request.body.category,
+      request.body.body,
+      request.body.published_on
     ];
     client.query(SQL, values,
       function(err) {
@@ -97,17 +101,34 @@ app.post('/articles', (request, response) => {
 });
 
 app.put('/articles/:id', function(request, response) {
-  // TODO: Write a SQL query to update an author record. Remember that our articles now have an author_id property, so we can reference it from the request.body.
-  // TODO: In the provided array, add the required values from the request as data for the SQL query to interpolate.
+  // NOT WORKING - TODO: Write a SQL query to update an author record. Remember that our articles now have an author_id property, so we can reference it from the request.body.
+  // NOT WORKING - TODO: In the provided array, add the required values from the request as data for the SQL query to interpolate.
 
-  let SQL = '';
-  let values = [];
+  let SQL = `
+    UPDATE authors 
+    SET author=$1, author_url=$2
+    WHERE author_id=$3;`;
+  let values = [
+    request.body.author,
+    request.body.author_url,
+    request.body.author_id
+  ];
   client.query(SQL, values)
     .then(() => {
-      // TODO: Write a SQL query to update an article record. Keep in mind that article records now have an author_id, in addition to title, category, published_on, and body.
-      // TODO: In the provided array, add the required values from the request as data for the SQL query to interpolate.
-      let SQL = '';
-      let values = [];
+      // NOT WORKING - TODO: Write a SQL query to update an article record. Keep in mind that article records now have an author_id, in addition to title, category, published_on, and body.
+      // NOT WORKING - TODO: In the provided array, add the required values from the request as data for the SQL query to interpolate.
+      let SQL = ` 
+      UPDATE articles 
+      SET title=$1, category=$2, body=$3, published_on=$4
+      WHERE article_id=$5 AND author_id=$6;`;
+      let values = [
+        request.body.title,
+        request.body.category,
+        request.body.body,
+        request.body.published_on,
+        request.body.article_id,
+        request.body.author_id
+      ];
       client.query(SQL, values)
     })
     .then(() => {
